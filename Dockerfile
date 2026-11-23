@@ -15,5 +15,6 @@ COPY --chmod=a+rX assets /usr/share/nginx/html/assets
 COPY --chmod=a+rX css /usr/share/nginx/html/css
 COPY --chmod=a+rX js /usr/share/nginx/html/js
 COPY --chmod=a+rX geojson /usr/share/nginx/html/geojson
+COPY --chmod=a+rX ge /usr/share/nginx/html/ge
 COPY --from=topics-builder --chmod=a+rX /src/topics /usr/share/nginx/html/topics
 EXPOSE 80
