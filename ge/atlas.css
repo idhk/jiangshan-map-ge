@@ -52,6 +52,19 @@ header p { margin: 0; }
 .map-card, .era-card { margin: 0; border: 1px solid var(--border); border-radius: 9px; background: var(--panel); }
 .map-frame { position: relative; overflow: hidden; border-radius: 8px 8px 0 0; background: #b7cbd0; }
 .map-frame img { display: block; width: 100%; height: auto; }
+#territories { position: absolute; inset: 0; width: 100%; height: 100%; }
+.territory {
+  fill: var(--territory-color);
+  fill-opacity: .42;
+  fill-rule: evenodd;
+  stroke: var(--territory-color);
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.territory:hover { fill-opacity: .66; }
+.territory.approximate { stroke-dasharray: 3 2; }
+.territory.color-only { pointer-events: none; }
 .map-label {
   position: absolute;
   font-weight: 650;
@@ -107,6 +120,11 @@ header p { margin: 0; }
 figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 9px 12px; font-size: .85rem; }
 figcaption span { display: flex; align-items: center; gap: 4px; }
 .map-source { margin-inline-start: auto; color: var(--secondary); }
+.territory-info { border-top: 1px solid var(--border); padding: 8px 12px; }
+.territory-info p { margin: 0; color: var(--secondary); font-size: .85rem; }
+#territory-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 0; margin: 5px 0 0; list-style: none; }
+#territory-legend li { display: inline-flex; gap: 5px; align-items: center; margin: 0; font-size: .85rem; }
+.territory-color { width: 10px; height: 10px; border-radius: 2px; background: var(--territory-color); }
 .point { border-top: 1px solid var(--border); padding: 12px; }
 .point h2, .point ul, .era-card h2, .ka { margin: 0; }
 .point h2 { font-size: 1.25rem; }

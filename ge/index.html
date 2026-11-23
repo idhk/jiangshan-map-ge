@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="atlas.css">
     <script defer src="ge_dynasty_data.js"></script>
     <script defer src="ge_polities.js"></script>
+    <script defer src="borders-data.js"></script>
     <script defer src="timeline.js"></script>
   </head>
   <body>
@@ -28,6 +29,7 @@
         <figure class="map-card">
           <div class="map-frame">
             <img src="south-caucasus.webp" width="1200" height="930" alt="南高加索地形，从黑海到里海">
+            <svg id="territories" viewBox="0 0 1200 930" preserveAspectRatio="none" aria-hidden="true"></svg>
             <span class="map-label black-sea">黑海</span>
             <span class="map-label caspian-sea">里海</span>
             <span class="map-label caucasus">大高加索山脉</span>
@@ -38,6 +40,10 @@
             <span><i class="legend-dot event" aria-hidden="true"></i>阶段史事</span>
             <span class="map-source">现代地形参考 · <a href="https://www.naturalearthdata.com/downloads/50m-raster-data/50m-shaded-relief/">Natural Earth</a></span>
           </figcaption>
+          <section class="territory-info" aria-label="疆域图例">
+            <p id="territory-date">疆域资料加载中。</p>
+            <ul id="territory-legend"></ul>
+          </section>
           <section id="point" class="point" aria-live="polite" hidden>
             <h2 id="point-name"></h2>
             <ul id="point-details"></ul>
@@ -49,7 +55,7 @@
           <p id="era-summary"></p>
           <h3 id="phase"></h3>
           <p id="border"></p>
-          <p class="note">历史疆域以文字说明呈现。底图显示现代地形。</p>
+          <p class="note">色块按阶段展示参考年份的范围。空白区暂无可用边界，底图为现代地形。</p>
           <details>
             <summary>阶段政权</summary>
             <ul id="polities"></ul>

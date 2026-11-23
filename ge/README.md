@@ -1,10 +1,10 @@
 # 格鲁吉亚历史版 · 第一框架（v0.2）
 
 > 沿用「江山时序」的 **时代 → 版图阶段（phase / snap）→ 里程碑（milestone）** 结构。
-> 时代划分以格鲁吉亚史为主轴，覆盖南高加索三国。时间轴可切换时代和年份，地图展示当时的地点和阶段史事，可点击点位查看详情。历史疆域目前以阶段说明和政权清单呈现。
+> 时代划分以格鲁吉亚史为主轴，覆盖南高加索三国。拖动时间轴切换 50 个阶段的边界色块和图例；可输入年份或按时代跳转，也可点击地点查看史事。每阶段注明边界参考年，资料不足的地区留空。
 
 从仓库根目录运行 `python3 -m http.server --bind 127.0.0.1 8000`，打开 [地图调试页](http://127.0.0.1:8000/ge/)。
-运行 `node --test scripts/tests/georgia.test.js` 检查年代覆盖、快照标识、政权引用和地点坐标。
+运行 `node --test scripts/tests/georgia.test.js` 检查年代覆盖、疆域路径、政权引用和地点坐标。
 
 参考底图取自 Natural Earth 的 [1∶50m 地形晕渲](https://www.naturalearthdata.com/downloads/50m-raster-data/50m-shaded-relief/)（v3.2.0）和 [Land、Lakes、Rivers](https://www.naturalearthdata.com/downloads/50m-physical-vectors/)（v5.1.2 数据包）。栅格与点位使用下表同一视野，经纬度线性投影；超出视野的史事仍列在里程碑中。
 
@@ -12,6 +12,7 @@
 |---|---|
 | [`ge_dynasty_data.js`](./ge_dynasty_data.js) | `window.GE_DYNASTY_DATA`：14 个时代 · 50 个版图快照 · 100 个里程碑（schema 同 `js/map_data.js`） |
 | [`ge_polities.js`](./ge_polities.js) | `window.GE_POLITIES`：93 个政权色块（中文 / 格鲁吉亚语 / 英文）；`window.GE_ATLAS_CONFIG`：视野与语言 |
+| [`borders-data.js`](./borders-data.js) | 50 个阶段的疆域色块。参考年份和裁剪规则在 [生成脚本](../scripts/build_ge_borders.py) 中 |
 
 ## 1. 已确定的设定
 
@@ -43,16 +44,20 @@
 
 ## 3. 三国色块的组织方式
 
-- 每个快照的 `polities` 列出当期要画的全部色块 id；`group` 决定色系：`ge` 格鲁吉亚 · `am` 亚美尼亚 · `az` 阿塞拜疆 / 高加索阿尔巴尼亚 · `ext` 外部帝国。
+- 每阶段的 `polities` 是文字清单。疆域图例随已取得的几何更新，并复用同名政权的色系和中译名。`group` 分为 `ge` 格鲁吉亚、`am` 亚美尼亚、`az` 阿塞拜疆／高加索阿尔巴尼亚和 `ext` 外部帝国。
 - 里程碑新增 `scope`：`am` = 亚美尼亚史，`az` = 阿塞拜疆史，缺省 = 格鲁吉亚史。时间轴可以按三国分别筛选。
 - 三国主线举例：亚美尼亚 —— 阿尔塔希阿斯王朝、387 年瓜分、巴格拉图尼王朝、扎卡里德、埃里温汗国、1828 年入俄；阿塞拜疆 —— 高加索阿尔巴尼亚、希尔万沙国、沙达德、萨法维、诸汗国、1813 年入俄。
 
-## 4. 下一步：画边界
+## 4. 疆域资料
 
-1. 1886 年以后：[CShapes 2.0](https://icr.ethz.ch/data/cshapes/)（逐年国界）+ 俄帝国省界 → 先画 `soviet`、`independent`、`drg`、`russian` 共 17 个快照
-2. 中世纪：参考 [Euratlas](https://www.euratlas.net/history/europe/index.html) 世纪切片手绘
-3. 古代：沿大高加索主脊、利希山、小高加索、库拉河、阿拉斯河等地形线绘制
-4. 现代对照层：[Natural Earth admin-1](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/)
+- 主来源为 **James S. Bennett、Erin Mutch、Andrew Tollefson 等，Seshat Global History Databank 的 [Cliopatria 0.2.1](https://github.com/Seshat-Global-History-Databank/cliopatria/releases/tag/v0.2.1)**，遵循 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。取参考年对应的政权，裁剪到本页视野和现代海岸线，简化边界，过滤错置的地理片段。最晚的参考年为 2024 年。
+- 科尔基斯和伊比利亚的早期虚线来自 **Deu、Cplakidas、Ercwlff 等** 的 [Early Georgian States, ca. 600–150 BC](https://commons.wikimedia.org/wiki/File:Georgian_States_Colchis_and_Iberia_(600-150BC)-en.svg)。用皮蒂乌斯、狄奥斯库里亚斯、法西斯、姆茨赫塔等图上点位配准，提取科尔基斯和伊比利亚核心区，简化后发布为 [early-boundaries.geojson](./early-boundaries.geojson)，遵循 [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)。原图涵盖数世纪，轮廓为阶段参考。
+- 苏联后期加盟共和国资料来自 **Armenica.org、Artaxiad、Hellerick 等** 的 [Soviet Caucasus map, 1957–1991](https://commons.wikimedia.org/wiki/File:Soviet_Caucasus_map.svg)。用第比利斯、埃里温、巴库等图上点位配准，提取三共和国轮廓并简化，发布为 [soviet-boundaries.geojson](./soviet-boundaries.geojson)，遵循 [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)。1957 年前的苏联色块采用国际外边界。克卢霍里等阶段性行政界线待补。
+- 2020 年秋季战事之后的纳卡参考范围和近年阿布哈兹参考范围来自 [Natural Earth v5.1.2](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.2/geojson/ne_10m_admin_0_disputed_areas.geojson) 的 2022 年争议区数据。较早阶段的对应控制线仍有缺项。争议区以所引资料的范围为参考。
+
+生成时向 [build_ge_borders.py](../scripts/build_ge_borders.py) 依次传入 Cliopatria v0.2.1 的 `cliopatria.geojson.zip`，以及 Natural Earth v5.1.2 的 `ne_50m_land.geojson`、`ne_50m_lakes.geojson`、`ne_10m_admin_0_disputed_areas.geojson`。例如 `uv run --with shapely==2.2.0 scripts/build_ge_borders.py cliopatria.geojson.zip ne_50m_land.geojson ne_50m_lakes.geojson ne_10m_admin_0_disputed_areas.geojson`。网页直接读取生成文件。
+
+时间轴按疆域阶段分档，也可输入年份定位。1918、1919、1920 各有一档，分别对应格鲁吉亚民主共和国的三个阶段。巴统英军驻区和洛里中立区的细部界线待补。
 
 ## 5. 待核实
 
