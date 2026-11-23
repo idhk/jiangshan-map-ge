@@ -27,3 +27,13 @@ test('every supported year resolves to a phase with known polities', () => {
     assert.ok(era?.phases.some(({ until }) => year <= until), `No phase for ${year}`);
   }
 });
+
+test('every era has visible places and valid WGS84 coordinates for its milestones', () => {
+  const { GE_DYNASTY_DATA: eras, GE_ATLAS_CONFIG: { bbox: [west, south, east, north] } } = window;
+  for (const { key, settlements, milestones } of eras) {
+    assert.ok(settlements.some(({ coord: [lon, lat] }) => west <= lon && lon <= east && south <= lat && lat <= north), key);
+    for (const { coord: [lon, lat] } of [...settlements, ...milestones]) {
+      assert.ok(Math.abs(lon) <= 180 && Math.abs(lat) <= 90, `${key}: ${lon},${lat}`);
+    }
+  }
+});

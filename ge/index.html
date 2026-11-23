@@ -3,45 +3,64 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>格鲁吉亚历史时间轴 · 江山时序</title>
+    <title>格鲁吉亚历史地图 · 江山时序</title>
     <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
-    <style>
-      :root { color-scheme: light dark; font: 16px/1.6 system-ui, sans-serif; }
-      body { margin: 0; }
-      main { max-width: 56rem; margin: auto; padding: 1.5rem; }
-      h1, h2, h3 { line-height: 1.3; }
-      form:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-      input, button { font: inherit; padding: .25rem .5rem; }
-      input { width: 6rem; }
-      li + li { margin-top: .4rem; }
-    </style>
+    <link rel="stylesheet" href="atlas.css">
     <script defer src="ge_dynasty_data.js"></script>
     <script defer src="ge_polities.js"></script>
     <script defer src="timeline.js"></script>
   </head>
   <body>
     <main>
-      <a href="../">江山时序</a>
-      <h1>格鲁吉亚历史时间轴</h1>
-      <p>查看南高加索历史阶段和里程碑。疆域边界尚未绘制，阶段说明来自数据草案。</p>
-      <form id="timeline" hidden>
-        <label for="year">年份（公元前用负数）</label>
-        <input id="year" name="year" type="number" required>
+      <header>
+        <a class="back" href="../index.html">‹ 江山时序</a>
+        <h1>格鲁吉亚历史地图</h1>
+        <p lang="ka">საქართველო</p>
+      </header>
+      <form id="timeline" class="time-controls" hidden>
+        <label>时代 <select id="era-select"></select></label>
+        <label>年份 <input id="year" name="year" type="number" required></label>
         <button type="submit">查看</button>
+        <label class="range-label">时间轴 <input id="year-slider" type="range"></label>
       </form>
-      <p id="status" role="status">时间轴数据加载中。</p>
-      <section id="era" hidden aria-labelledby="era-name">
-        <h2 id="era-name"></h2>
-        <p id="era-ka" lang="ka"></p>
-        <p id="era-summary"></p>
-        <h3 id="phase"></h3>
-        <p id="border"></p>
-        <h3>阶段政权</h3>
-        <ul id="polities"></ul>
-        <h3>本时代里程碑</h3>
-        <ol id="events"></ol>
-      </section>
-      <noscript>查看时间轴需要启用 JavaScript。</noscript>
+      <p id="status" class="status" role="status">时间轴数据加载中。</p>
+      <div class="atlas">
+        <figure class="map-card">
+          <div class="map-frame">
+            <img src="south-caucasus.webp" width="1200" height="930" alt="南高加索地形，从黑海到里海">
+            <span class="map-label black-sea">黑海</span>
+            <span class="map-label caspian-sea">里海</span>
+            <span class="map-label caucasus">大高加索山脉</span>
+            <div id="pins" role="group" aria-label="地图点位"></div>
+          </div>
+          <figcaption>
+            <span><i class="legend-dot" aria-hidden="true"></i>历史地点</span>
+            <span><i class="legend-dot event" aria-hidden="true"></i>阶段史事</span>
+            <span class="map-source">现代地形参考 · <a href="https://www.naturalearthdata.com/downloads/50m-raster-data/50m-shaded-relief/">Natural Earth</a></span>
+          </figcaption>
+          <section id="point" class="point" aria-live="polite" hidden>
+            <h2 id="point-name"></h2>
+            <ul id="point-details"></ul>
+          </section>
+        </figure>
+        <section id="era" class="era-card" hidden aria-labelledby="era-name">
+          <h2 id="era-name"></h2>
+          <p id="era-ka" class="ka" lang="ka"></p>
+          <p id="era-summary"></p>
+          <h3 id="phase"></h3>
+          <p id="border"></p>
+          <p class="note">历史疆域以文字说明呈现。底图显示现代地形。</p>
+          <details>
+            <summary>阶段政权</summary>
+            <ul id="polities"></ul>
+          </details>
+          <details open>
+            <summary>本时代里程碑</summary>
+            <ol id="events"></ol>
+          </details>
+        </section>
+      </div>
+      <noscript>启用 JavaScript 后，可以切换年代和查看地图上的历史地点。</noscript>
     </main>
   </body>
 </html>

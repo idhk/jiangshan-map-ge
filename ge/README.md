@@ -1,11 +1,12 @@
 # 格鲁吉亚历史版 · 第一框架（v0.2）
 
 > 沿用「江山时序」的 **时代 → 版图阶段（phase / snap）→ 里程碑（milestone）** 结构。
-> 时代划分以格鲁吉亚史为主轴，地图画出 **南高加索三国（格鲁吉亚、亚美尼亚、阿塞拜疆）** 的全部政权色块。
-> 本版只有时间轴、色块规格和地名，还没有任何几何（polygon）。
+> 时代划分以格鲁吉亚史为主轴，覆盖南高加索三国。时间轴可切换时代和年份，地图展示当时的地点和阶段史事，可点击点位查看详情。历史疆域目前以阶段说明和政权清单呈现。
 
-从仓库根目录运行 `python3 -m http.server --bind 127.0.0.1 8000`，打开 [时间轴调试页](http://127.0.0.1:8000/ge/)。
-运行 `node --test scripts/tests/georgia.test.js` 检查年代覆盖、快照标识和政权引用。
+从仓库根目录运行 `python3 -m http.server --bind 127.0.0.1 8000`，打开 [地图调试页](http://127.0.0.1:8000/ge/)。
+运行 `node --test scripts/tests/georgia.test.js` 检查年代覆盖、快照标识、政权引用和地点坐标。
+
+参考底图取自 Natural Earth 的 [1∶50m 地形晕渲](https://www.naturalearthdata.com/downloads/50m-raster-data/50m-shaded-relief/)（v3.2.0）和 [Land、Lakes、Rivers](https://www.naturalearthdata.com/downloads/50m-physical-vectors/)（v5.1.2 数据包）。栅格与点位使用下表同一视野，经纬度线性投影；超出视野的史事仍列在里程碑中。
 
 | 文件 | 内容 |
 |---|---|
