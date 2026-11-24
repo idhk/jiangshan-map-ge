@@ -23,7 +23,7 @@ import os
 import shutil
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'assets', 'terrain')
@@ -158,12 +158,56 @@ def build_base(dem_dir, zdem=6):
   print(f'base: {old.size[0]}x{old.size[1]} from z{zdem}, {os.path.getsize(BASE_PATH) / 1048576:.2f} MB')
 
 
+def build_georgia_base(dem_dir, land_path, lakes_path, zdem=8):
+  """Shade the Caucasus with the same palette and Mercator grid as the atlas."""
+  west, south, east, north = 38.5, 37.5, 51, 44.8
+  world = DEM_TILE * 2**zdem
+
+  def geo_to_px(lon, lat):
+    return world * (lon + 180) / 360, world * (1 - _merc(max(-85, min(85, lat))) / math.pi) / 2
+
+  left, top = geo_to_px(west, north)
+  right, bottom = geo_to_px(east, south)
+  x0, y0 = int(left // DEM_TILE) - 1, int(top // DEM_TILE) - 1
+  x1, y1 = int(right // DEM_TILE) + 1, int(bottom // DEM_TILE) + 1
+  mosaic = np.empty(((y1 - y0 + 1) * DEM_TILE, (x1 - x0 + 1) * DEM_TILE), dtype=np.float32)
+  for y in range(y0, y1 + 1):
+    for x in range(x0, x1 + 1):
+      row, col = (y - y0) * DEM_TILE, (x - x0) * DEM_TILE
+      mosaic[row:row + DEM_TILE, col:col + DEM_TILE] = decode(os.path.join(dem_dir, str(zdem), f'{x}_{y}.png'))
+
+  rgba = hillshade(mosaic, zdem, y0 * DEM_TILE)
+  # Shorelines come from Natural Earth so low land on the Caspian shore stays opaque.
+  mask = Image.new('L', (rgba.shape[1], rgba.shape[0]))
+  draw = ImageDraw.Draw(mask)
+  for path, color in ((land_path, 255), (lakes_path, 0)):
+    with open(path, encoding='utf-8') as src:
+      for feature in json.load(src)['features']:
+        geometry = feature['geometry']
+        shapes = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
+        for polygon in shapes:
+          for index, ring in enumerate(polygon):
+            points = [geo_to_px(lon, lat) for lon, lat in ring]
+            draw.polygon([(x - x0 * DEM_TILE, y - y0 * DEM_TILE) for x, y in points], fill=255 - color if index else color)
+  image = Image.fromarray(rgba, 'RGBA')
+  image.putalpha(mask)
+  crop = (left - x0 * DEM_TILE, top - y0 * DEM_TILE, right - x0 * DEM_TILE, bottom - y0 * DEM_TILE)
+  width = round(right - left)
+  height = round(bottom - top)
+  image.resize((width, height), Image.LANCZOS, box=crop).save(
+    os.path.join(ROOT, 'ge', 'terrain_relief.webp'), 'WEBP', quality=82, method=6)
+
+
 def main():
   ap = argparse.ArgumentParser()
   ap.add_argument('--dem', required=True)
   ap.add_argument('--zooms', default='5,6')
   ap.add_argument('--base', action='store_true', help='also re-render assets/terrain_relief.webp')
+  ap.add_argument('--georgia', nargs=2, metavar=('LAND', 'LAKES'), help='render only the Caucasus base relief')
   args = ap.parse_args()
+  if args.georgia:
+    build_georgia_base(args.dem, *args.georgia)
+    return
   if args.base:
     build_base(args.dem)
   index_path = os.path.join(OUT, 'index.json')

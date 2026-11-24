@@ -8,6 +8,25 @@
     // jumps and loads the target dynasty's snapshot chunk. The relief image waits too (see the
     // script after #atlas-svg), so the borders arrive first.
     (function () {
+      if (new URLSearchParams(location.search).get('atlas') === 'ge') {
+        document.documentElement.classList.add('deeplink-boot');
+        document.documentElement.dataset.atlas = 'ge';
+        const load = (name) => new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'ge/' + name + '.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+        window.ATLAS_REGION_READY = Promise.all(['ge_dynasty_data', 'ge_polities', 'borders-data'].map(load))
+          .then(() => load('atlas-data')).then(() => window.GE_ATLAS_REGION).catch(() => null);
+        const relief = document.createElement('link');
+        relief.rel = 'preload';
+        relief.as = 'image';
+        relief.href = 'ge/terrain_relief.webp';
+        document.head.appendChild(relief);
+        return;
+      }
       if (/[?&]lang=en(?:&|$)/i.test(location.search)) {
         var i18n = document.createElement('link');
         i18n.rel = 'preload';
@@ -33,7 +52,7 @@
     })();
   </script>
   <title>江山时序 · 中国历史地图时间轴（战国至现代历代疆域、州郡政区与古今地名沿革）</title>
-  <link rel="stylesheet" href="css/style.css?v=b2405471" />
+  <link rel="stylesheet" href="css/style.css?v=6d86c829" />
   <meta name="description" id="meta-description" content="交互式中国历史地图时间轴（公元前403年战国三家分晋至现代）：浏览18个朝代多阶段历史疆域、州郡道省政区、黄河改道水系、历代古城古今地名对照（点地溯源）、天下名关与青史人物行迹，支持现代省界对照、古地名挑战与中英双语。" />
   <meta name="keywords" content="江山时序,江山时序历史地图,中国历史地图,历史地图时间轴,历代疆域变迁,中国历代地图,古今地名对照,政区沿革查询,点地溯源,古诗词路线地图,战国七雄地图,秦朝郡县地图,西汉地图,西域都护府,三国地图,东晋十六国地图,南北朝地图,唐朝地图,五代十国地图,燕云十六州,北宋地图,南宋地图,大理国地图,元朝行省地图,明朝地图,清朝地图,名关雄隘,函谷关,潼关,剑门关,雁门关,玉门关,山海关,张骞出使西域路线,诸葛亮北伐路线,玄奘西行路线,李白壮游路线,杜甫闻官军收河南河北路线,苏轼贬谪路线,文天祥过零丁洋路线,王阳明行迹,长平之战地图,赤壁之战地图,淝水之战地图,Historical Atlas of China,Chinese History Map Timeline,Jiangshan Atlas" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -351,7 +370,7 @@
         </h1>
       </div>
       <div class="control-strip" role="toolbar" aria-label="地图图层与交互模式">
-        <a class="action-btn subtle" href="./ge/" title="格鲁吉亚历史地图 / Georgia historical atlas">格鲁吉亚 <span lang="en">Georgia</span></a>
+        <a id="act-switch-atlas" class="action-btn subtle" href="./?atlas=ge" title="格鲁吉亚历史地图">格鲁吉亚</a>
         <button id="act-layers-menu" class="action-btn subtle layers-trigger-btn" type="button" aria-expanded="false" aria-controls="layers-popover" title="展开或收起地图图层开关">
           <svg class="btn-svg" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M8 1.8L1.5 5.2 8 8.6l6.5-3.4L8 1.8zM1.5 8.2L8 11.6l6.5-3.4M1.5 11.2L8 14.6l6.5-3.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span id="lbl-layers-btn">图层</span>
@@ -919,9 +938,9 @@
   <script src="js/atlas_boot.js?v=67cb36dd"></script>
   <script src="js/map_data.js?v=e68831e8"></script>
   <script src="js/lore_core.js?v=4dcd5e5b"></script>
-  <script id="atlas-app-script" src="js/app.js?v=d38680ce" data-v-snapshots="e548bf7a" data-v-i18n="f85754a5" data-v-lore="69a57d0f" data-v-pinyin="5de044e1" data-v-hant="3afdab47" data-v-quiz="b93ee194" data-v-quiz-poster="6f30122f" data-v-narrator="d9f546a1" data-v-sources="eda78c2d"></script>
+  <script id="atlas-app-script" src="js/app.js?v=8413dba7" data-v-snapshots="e548bf7a" data-v-i18n="f85754a5" data-v-lore="69a57d0f" data-v-pinyin="5de044e1" data-v-hant="3afdab47" data-v-quiz="b93ee194" data-v-quiz-poster="6f30122f" data-v-narrator="d9f546a1" data-v-sources="eda78c2d"></script>
   <script src="js/atlas_trace.js?v=5ef930a4"></script>
-  <script src="js/atlas_search.js?v=54be5593"></script>
+  <script src="js/atlas_search.js?v=ba409e19"></script>
   <script src="js/atlas_api.js?v=575d60fd"></script>
 </body>
 </html>

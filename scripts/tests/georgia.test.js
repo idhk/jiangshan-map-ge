@@ -3,10 +3,12 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 
-global.window = {};
+global.window = { addEventListener() {} };
 require('../../ge/ge_dynasty_data');
 require('../../ge/ge_polities');
 require('../../ge/borders-data');
+require('../../ge/atlas-data');
+require('../../js/app');
 
 test('every supported year resolves to a phase with known polities', () => {
   const { GE_DYNASTY_DATA: eras, GE_POLITIES: polities, GE_ATLAS_CONFIG: config } = window;
@@ -40,7 +42,8 @@ test('every era has visible places and valid WGS84 coordinates for its milestone
 });
 
 test('every timeline stage has a nonempty territory snapshot at an applicable year', () => {
-  const { GE_DYNASTY_DATA: eras, GE_POLITIES: polities, GE_BORDERS: borders } = window;
+  const { GE_DYNASTY_DATA: eras, GE_POLITIES: polities, GE_BORDERS: borders, GE_ATLAS_REGION: region } = window;
+  const { west, east, south, north } = region.bounds;
   const phaseKeys = [];
   const geometrySets = new Set();
   for (const era of eras) {
@@ -59,13 +62,40 @@ test('every timeline stage has a nonempty territory snapshot at an applicable ye
   assert.deepEqual(Object.keys(borders.snapshots), phaseKeys);
   assert.equal(geometrySets.size, phaseKeys.length, 'each stage must switch the visible territory geometry');
 
-  for (const [key, name, path, approximate] of borders.shapes) {
+  for (const [key, name, coordinates, approximate] of borders.shapes) {
     assert.ok(Object.hasOwn(polities, key) || name, key);
     assert.equal(typeof approximate, 'boolean', key);
-    assert.match(path, /^(M\d+,\d+( \d+,\d+){2,}Z)+$/, key);
-    assert.ok([...path.matchAll(/(\d+),(\d+)/g)].every(([, x, y]) => Number(x) <= 1200 && Number(y) <= 930), key);
+    assert.ok(coordinates.length, key);
+    for (const ring of coordinates.flat()) {
+      assert.ok(ring.length >= 4, key);
+      assert.deepEqual(ring[0], ring.at(-1), key);
+      assert.ok(ring.every(([lng, lat]) => west <= lng && lng <= east && south <= lat && lat <= north), key);
+    }
     if (polities[key]?.label === false) assert.equal(name, null, key);
   }
+});
+
+test('the shared atlas resolves and draws Georgia snapshots across its entire timeline', () => {
+  const { GE_ATLAS_REGION: region, GE_BORDERS: borders, HistoricalAtlasController, MercatorProjector } = window;
+  const atlas = Object.assign(Object.create(HistoricalAtlasController.prototype), { region, dynasties: region.dynasties });
+  const projector = new MercatorProjector(1000, 700, region.bounds);
+  const seen = new Set();
+  for (let year = region.dynasties[0].fromYear; year <= region.dynasties.at(-1).toYear; year++) {
+    if (year === 0) continue;
+    const key = atlas._resolveSnapKey(region.dynasties[atlas._findDynastyIndex(year)], year);
+    assert.ok(region.snapshots[key]?.polities.length, `${year}: ${key}`);
+    seen.add(key);
+  }
+  assert.equal(seen.size, 50);
+  for (const [key, [year]] of Object.entries(borders.snapshots)) {
+    assert.equal(atlas._resolveSnapKey(region.dynasties[atlas._findDynastyIndex(year)], year), key);
+    for (const polity of region.snapshots[key].polities) {
+      assert.match(projector.shapeToSvgPath(polity.shape), /^M[\d.-]+ /, key);
+      if (!polity.label) assert.deepEqual([polity.title, polity.anchor], ['', null]);
+    }
+  }
+  assert.match(projector.shapeToSvgPath(region.land), /^M/);
+  assert.ok(region.hydro.rivers.length);
 });
 
 test('key regional boundaries change across ancient, Soviet and modern snapshots', () => {

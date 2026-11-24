@@ -347,18 +347,19 @@
   };
 
   class HistoricalAtlasController {
-    constructor() {
-      this.dynasties = window.DYNASTY_DATA || [];
-      this.provinces = window.PROVINCE_OUTLINES || [];
-      this.corridors = window.CORRIDOR_DATA || [];
-      this.snapshots = window.ATLAS_SNAPSHOTS || {};
+    constructor(region = null) {
+      this.region = region;
+      this.dynasties = region?.dynasties || window.DYNASTY_DATA || [];
+      this.provinces = region ? [] : window.PROVINCE_OUTLINES || [];
+      this.corridors = region ? [] : window.CORRIDOR_DATA || [];
+      this.snapshots = region?.snapshots || window.ATLAS_SNAPSHOTS || {};
       this._fullSnapshotsLoaded = Boolean(
-        window.ATLAS_FULL_SNAPSHOTS_LOADED || (this.snapshots && this.snapshots.s_prc)
+        region || window.ATLAS_FULL_SNAPSHOTS_LOADED || (this.snapshots && this.snapshots.s_prc)
       );
       this._fullSnapshotsPromise = null;
       this._enLocalePromise = null;
       this._loreDetailLoaded = Boolean(
-        window.ATLAS_LORE_DETAIL_LOADED ||
+        region || window.ATLAS_LORE_DETAIL_LOADED ||
           (window.ATLAS_LORE_DATA &&
             Array.isArray(window.ATLAS_LORE_DATA.PLACE_LANDMARK_EVENTS) &&
             window.ATLAS_LORE_DATA.PLACE_LANDMARK_EVENTS.length > 0)
@@ -374,7 +375,7 @@
         dict: {},
       });
 
-      this.projector = new MercatorProjector(1000, 700, {
+      this.projector = region ? new MercatorProjector(1000, 700, region.bounds) : new MercatorProjector(1000, 700, {
         west: 66,
         east: 142,
         south: 14,
@@ -396,7 +397,7 @@
           : /^(zh-tw|zh_tw|tw|hk|zh-hk|zh_hk|zh-hant|zh_hant|hant)$/.test(rawLang)
             ? 'zh-tw'
             : 'zh';
-      this.year = this.dynasties[0].focusYear;
+      this.year = region?.initialYear ?? this.dynasties[0].focusYear;
       this.dynastyIdx = 0;
       this.activeSnapKey = null;
       this.activeSettlementMask = null;
@@ -410,7 +411,7 @@
       this.musicTrackIdx = 0;
       this.musicAudio = null;
       this.terrainMode = true;
-      this.hydroData = window.HYDRO_DATA || { rivers: [], lakes: [] };
+      this.hydroData = region?.hydro || window.HYDRO_DATA || { rivers: [], lakes: [] };
       this.activeTrace = null;
       this.activePerson = null;
       this.activePersonEventIdx = -1;
@@ -460,6 +461,7 @@
           ? window.innerWidth
           : undefined;
       this._bindDom();
+      if (region) this._bindRegionDom();
       this._runWithDeferredTypography(() => {
         this._applyCamera(true);
         this._buildTerrainRivers();
@@ -477,7 +479,7 @@
           qBoot && (qBoot.has('place') || (qBoot.has('lng') && qBoot.has('lat')))
         );
         if (!hasLocateBoot) {
-          this.jumpToYear(linkedYear !== null ? linkedYear : this.dynasties[0].focusYear);
+          this.jumpToYear(linkedYear ?? (region?.initialYear ?? this.dynasties[0].focusYear));
           this._holdDeferredLoads();
         } else if (linkedYear !== null) {
           this.year = Math.max(this.minYear, Math.min(this.maxYear, Math.round(linkedYear)));
@@ -496,7 +498,7 @@
         if (this.embed) this._initEmbedChrome();
       });
       this._bootInnerWidth = undefined;
-      if (!this.embed) this._maybeShowStartGuide();
+      if (!this.embed && !region) this._maybeShowStartGuide();
 
       if (!this._deferredLoadsHeld) this._releaseDeferredLoads();
     }
@@ -1136,6 +1138,13 @@
     }
 
     _getDefaultCamera() {
+      if (this.region) {
+        const aspect = this._getViewportAspect();
+        const portrait = this._isMobileViewport() && window.innerWidth < window.innerHeight;
+        const w = portrait ? 740 : Math.max(1000, 730 / aspect);
+        const h = w * aspect;
+        return { x: (1000 - w) / 2, y: (700 - h) / 2, w, h, zoom: 1000 / w };
+      }
       if (typeof window !== 'undefined') {
         if (window.innerWidth <= 900 && window.innerWidth < window.innerHeight) {
           const w = 340;
@@ -1189,6 +1198,37 @@
       this.mapKey = this._id('map-key');
       this.milestoneBalloon = this._id('milestone-balloon');
       this.journeyCard = this._id('journey-card');
+    }
+
+    _bindRegionDom() {
+      const { west, south, east, north } = this.region.bounds;
+      const [x, y] = this.projector.toScreen(west, north);
+      const [right, bottom] = this.projector.toScreen(east, south);
+      const relief = this._id('terrain-relief-img');
+      relief.setAttribute('data-href', this.region.terrain);
+      relief.removeAttribute('data-href-mobile');
+      for (const el of [relief, ...this.grpTerrain.querySelectorAll('rect')]) {
+        for (const [name, value] of Object.entries({ x, y, width: right - x, height: bottom - y })) {
+          el.setAttribute(name, value);
+        }
+      }
+      this.grpTerrain.before(this._svgNode('path', {
+        d: this.projector.shapeToSvgPath(this.region.land, false),
+        fill: 'var(--province-fill)',
+        'pointer-events': 'none',
+      }));
+      for (const id of ['chk-prefectures', 'chk-corridors', 'chk-provinces', 'chk-prov-names']) {
+        const input = this._id(id);
+        input.checked = false;
+        input.closest('label').classList.add('is-hidden');
+      }
+      for (const id of ['lnk-dynasty-topic', 'lnk-more-story', 'seo-atlas-directory']) {
+        this._id(id)?.classList.add('is-hidden');
+      }
+      this._id('inp-year').min = this.minYear;
+      this._id('inp-year').max = this.maxYear;
+      this._id('scrubber-track').setAttribute('aria-valuemin', this.minYear);
+      this._id('scrubber-track').setAttribute('aria-valuemax', this.maxYear);
     }
 
     // ---------------- Localization helpers ----------------
@@ -1284,7 +1324,11 @@
     }
 
     _setEnglishLocale(locale) {
-      this.enLocale = locale;
+      this.enLocale = this.region ? {
+        ...locale,
+        dict: { ...locale.dict, ...this.region.english.dict },
+        dynasties: this.region.english.dynasties,
+      } : locale;
       this._enDictReady = Boolean(locale && locale.dict && Object.keys(locale.dict).length);
     }
 
@@ -1684,6 +1728,7 @@
      * era of the regime that ruled that place, when it has a REGIONAL_ERA_TRACKS entry.
      */
     formatEraLabel(y, dynasty, coord = null, regime = null) {
+      if (this.region) return dynasty ? this.dynastyName(dynasty) : '';
       const yr = Math.round(y);
       const regional = coord || regime ? this._resolveRegionalEraSpan(yr, dynasty, coord, regime) : null;
       if (this.locale === 'en') {
@@ -1755,6 +1800,7 @@
       const prev =
         typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
       const p = new URLSearchParams();
+      if (this.region) p.set('atlas', this.region.key);
       p.set('year', String(this.year));
       const person = this.activePerson;
       const personKeys = person && Array.isArray(person.profiles) ? person.profiles.map((pr) => String(pr.key || '')) : [];
@@ -2008,10 +2054,26 @@
       const homeLink = this._id('act-home');
       if (homeLink) {
         // Home = a clean URL in the current language; this is the "reset" entry point.
-        homeLink.href = this.locale === 'en' ? './?lang=en' : this.locale === 'zh-tw' ? './?lang=zh-tw' : './';
+        const params = new URLSearchParams();
+        if (this.region) params.set('atlas', this.region.key);
+        if (this.locale !== 'zh') params.set('lang', this.locale);
+        homeLink.href = params.size ? `./?${params}` : './';
         homeLink.title = this.locale === 'en' ? 'Back to home' : this._zh('回到首页');
       }
-      this._id('txt-subtitle').textContent = this.uiStr('brand_sub', '中国历史地图 · 战国 → 今');
+      this._id('txt-subtitle').textContent = this.region
+        ? this.locale === 'en' ? this.region.subtitle.en : this._zh(this.region.subtitle.zh)
+        : this.uiStr('brand_sub', '中国历史地图 · 战国 → 今');
+      const switchAtlas = this._id('act-switch-atlas');
+      if (switchAtlas) {
+        const params = new URLSearchParams();
+        if (!this.region) params.set('atlas', 'ge');
+        if (this.locale !== 'zh') params.set('lang', this.locale);
+        switchAtlas.href = params.size ? `./?${params}` : './';
+        switchAtlas.textContent = this.locale === 'en'
+          ? this.region ? 'China' : 'Georgia'
+          : this._zh(this.region ? '中国' : '格鲁吉亚');
+        switchAtlas.title = switchAtlas.textContent;
+      }
       const lblLayersBtn = this._id('lbl-layers-btn');
       if (lblLayersBtn) {
         lblLayersBtn.textContent = this.uiStr('btn_layers', '图层');
@@ -2164,6 +2226,17 @@
         'caveat',
         '历史疆域与政区为示意性近似，非精确测绘边界。地形晕渲据 SRTM、GMTED2010 公开高程数据。'
       );
+      if (this.region) {
+        const sources = document.createElement('a');
+        sources.href = this.region.sourcesUrl;
+        sources.target = '_blank';
+        sources.rel = 'noopener';
+        sources.textContent = this.locale === 'en' ? 'Map sources' : this._zh('地图来源');
+        this._id('txt-disclaimer').replaceChildren(
+          this.locale === 'en' ? 'Historical borders are approximate. · ' : this._zh('历史疆域为近似范围。 · '),
+          sources
+        );
+      }
       this._id('txt-year-suffix').textContent = this.uiStr('year_unit', '年');
       this._syncStepNavTooltips();
       const inpYear = this._id('inp-year');
@@ -2199,7 +2272,9 @@
       if (atlasSvg) {
         atlasSvg.setAttribute(
           'aria-label',
-          this.locale === 'en' ? 'Historical Atlas of China' : '中国历史地图'
+          this.region
+            ? this.locale === 'en' ? this.region.name.en : this._zh(this.region.name.zh)
+            : this.locale === 'en' ? 'Historical Atlas of China' : '中国历史地图'
         );
       }
       this._id('txt-genealogy-kicker').textContent = this.activePerson
@@ -2229,13 +2304,13 @@
             ? 'Search historical figures (single or pair, e.g. Li Bai, Du Fu), ancient/modern cities, prefectures, or eras'
             : this._zh('搜历史人物（支持双人同框如：李白 杜甫）、古今地名、州府或帝王年号');
         searchInp.placeholder = searchPh;
-        searchInp.setAttribute('aria-label', searchAria);
+        searchInp.setAttribute('aria-label', this.region ? searchPh : searchAria);
       }
       const searchBox = this._id('map-search-box');
       if (searchBox) {
         searchBox.setAttribute(
           'aria-label',
-          this.locale === 'en'
+          this.region ? this._searchPlaceholder() : this.locale === 'en'
             ? 'Quick search for historical figures, places, prefectures, eras, and place quiz'
             : '快速检索历史人物、古今地名、州府、帝王年号与古地名寻址'
         );
@@ -3174,13 +3249,15 @@
           d: this.projector.shapeToSvgPath(pol.shape),
           class: `polity-shape ${pol.role}`,
         };
+        if (pol.approximate) attrs['stroke-dasharray'] = '4 3';
+        if (pol.label === false) attrs['pointer-events'] = 'none';
         if (!isN) {
           attrs.fill = pol.tint;
           attrs.stroke = pol.tint;
           ownPaths.push(attrs.d);
         }
         const path = this._svgNode('path', attrs, polGroup);
-        path.dataset.polityTitle = pol.title;
+        if (pol.label !== false) path.dataset.polityTitle = pol.title;
         path.dataset.polityRole = pol.role;
 
         if (pol.anchor) {
@@ -5632,11 +5709,12 @@
         const hasPhaseSpan = Boolean(curDyn && Array.isArray(curDyn.phases) && curDyn.phases.length > 1);
         const rawCaption = this.trTerm(snap.caption);
         h.textContent = hasPhaseSpan ? this._stripLegendCaptionYear(rawCaption) : rawCaption;
+        if (snap.reference && snap.note) h.title = this.trTerm(snap.note);
         this.mapKey.appendChild(h);
       }
       const grid = document.createElement('div');
       grid.className = 'key-grid key-polities-grid';
-      const core = (snap.polities || []).filter((p) => p.role !== 'neighbor');
+      const core = (snap.polities || []).filter((p) => p.role !== 'neighbor' && p.label !== false);
       const hasNeighbors = (snap.polities || []).some((p) => p.role === 'neighbor');
       const eraFocusTitle = this.activePolity ? null : this._eraFocusTitle();
       const curDynForKey = this.dynasties[this.dynastyIdx];
@@ -5716,6 +5794,15 @@
         if (e.pointerType !== 'touch') this._setPolityFocus(null);
       });
       if (grid.firstChild) this.mapKey.appendChild(grid);
+      if (snap.reference) {
+        const { year, sources, approximate } = snap.reference;
+        const credit = document.createElement('div');
+        credit.className = 'key-source';
+        const text = this.locale === 'en' ? 'Reference' : this._zh('参考边界');
+        const dashed = !approximate ? '' : this.locale === 'en' ? ' · dashed ≈ approximate' : this._zh(' · 虚线为近似范围');
+        credit.textContent = `${text} · ${this.formatYear(year)} · ${sources.map((name) => this.trTerm(name)).join(' · ')}${dashed}`;
+        this.mapKey.appendChild(credit);
+      }
 
       if (this._id('chk-corridors') && this._id('chk-corridors').checked) {
         const activeKinds = new Set();
@@ -5764,6 +5851,13 @@
     // ---------------- Chronicle Sidebar ----------------
     _syncDocumentSeoMeta() {
       if (typeof document === 'undefined') return;
+      if (this.region) {
+        const name = this.locale === 'en' ? this.region.name.en : this._zh(this.region.name.zh);
+        document.title = `${name} · ${this.uiStr('brand_seal', '江山时序')}`;
+        const canonical = this._id('lnk-canonical');
+        if (canonical) canonical.href = `./?atlas=${this.region.key}`;
+        return;
+      }
       const baseSiteUrl = 'https://deanchen.me/jiangshan-map/';
       const isEn = this.locale === 'en';
       const cur = this.dynasties && this.dynasties[this.dynastyIdx];
@@ -5821,6 +5915,7 @@
     }
 
     _syncSeoDirectoryLocale() {
+      if (this.region) return;
       const nav = this._id('seo-atlas-directory');
       if (!nav) return;
       if (this.locale !== 'en') {
@@ -6027,6 +6122,7 @@
         el.classList.toggle('is-current', idx === activeIdx)
       );
       this._syncMilestoneSource(dynasty);
+      if (this.region && !this._bootDone) return;
       const pane = this._id('chronicle-pane');
       if (!pane || this.paneCollapsed) return;
       if (this._isMobileViewport() && !this.mobileChronicleOpen) {
@@ -7529,8 +7625,9 @@
     }
 
     _terrainReady() {
+      // shortcut: Georgia uses a regional base image, extend tile loading when it has a tile index.
       return Boolean(
-        !this._deferredLoadsHeld &&
+        !this.region && !this._deferredLoadsHeld &&
           this.terrainTileLayer &&
           this.svg &&
           typeof document !== 'undefined' &&
@@ -10991,9 +11088,13 @@
   if (Array.isArray(window.__ATLAS_MIXINS)) {
     for (const install of window.__ATLAS_MIXINS.splice(0)) install(HistoricalAtlasController);
   }
-  const bootAtlasApp = () => {
+  const bootAtlasApp = (region = null) => {
     if (window.atlasApp) return;
-    const app = new HistoricalAtlasController();
+    if (region) {
+      // Keep shared presentation assets while scoping China-specific place and era indexes.
+      window.ATLAS_LORE_DATA = { GUQIN_TRACKS: window.ATLAS_LORE_DATA?.GUQIN_TRACKS, CHINESE_ERA_SPANS: [] };
+    }
+    const app = new HistoricalAtlasController(region);
     window.atlasApp = app;
     window.atlasAPI = {
       locate: (opts) => app.locate(opts),
@@ -11004,6 +11105,20 @@
     };
     app._registerWebMcpTools();
   };
-  HistoricalAtlasController._bootOnce = bootAtlasApp;
-  window.addEventListener('DOMContentLoaded', bootAtlasApp);
+  let regionBootStarted = false;
+  const initializeAtlas = () => {
+    const ready = window.ATLAS_REGION_READY;
+    if (!ready) return bootAtlasApp();
+    if (regionBootStarted) return;
+    regionBootStarted = true;
+    ready.then((region) => {
+      if (region) return bootAtlasApp(region);
+      const message = document.createElement('p');
+      message.setAttribute('role', 'alert');
+      message.textContent = '格鲁吉亚地图数据加载失败，请刷新。';
+      document.getElementById('atlas-shell').replaceChildren(message);
+    });
+  };
+  HistoricalAtlasController._bootOnce = initializeAtlas;
+  window.addEventListener('DOMContentLoaded', initializeAtlas);
 })();

@@ -17,6 +17,7 @@
   class AtlasSearchMixin {
     // ---------------- Global Quick Search ----------------
     _searchPlaceholder(expanded = false) {
+      if (this.region) return this.locale === 'en' ? 'Search places, events, eras' : this._zh('搜古今地名 / 史事 / 时代');
       if (this.locale === 'en') {
         return expanded
           ? 'Search people (or 2–3: Li Bai, Du Fu), places, eras'
@@ -30,6 +31,7 @@
     }
 
     _getSearchSampleQueries() {
+      if (this.region) return this.locale === 'en' ? ['Tbilisi', 'Batumi', '1205'] : ['第比利斯', '巴统', '1205'].map((s) => this._zh(s));
       return this.locale === 'en'
         ? ["Chang'an", 'Chibi', 'Cao Cao', 'Li Bai, Du Fu']
         : ['长安', '赤壁', '霍去病', '李白 杜甫 高适'].map((s) => this._zh(s));
@@ -233,7 +235,7 @@
       }
 
       // 0b. Map Pinpoint Quiz Mode (舆图寻址 · 古地名小试)
-      entries.push({
+      if (!this.region) entries.push({
         kind: 'quiz',
         dynasty: this.dynasties[2] || this.dynasties[0],
         year: null,
